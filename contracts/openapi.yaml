@@ -1,0 +1,97 @@
+openapi: 3.1.0
+info:
+  title: Luma Paperwork Assistant API
+  version: 1.0.0
+  description: Frozen API contracts for Luma AI-powered personal paperwork assistant.
+paths:
+  /api/assistant/chat:
+    post:
+      summary: Send a conversational turn to LifeDesk assistant
+      operationId: assistantChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Successful assistant response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponseEnvelope'
+        '400':
+          description: Invalid request
+        '500':
+          description: Internal server error
+components:
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        conversation_id:
+          type: string
+          description: Unique conversation session identifier
+        message:
+          type: string
+          description: User utterance or request
+        document_ids:
+          type: array
+          items:
+            type: string
+          description: Optional list of document IDs relevant to the turn
+    Citation:
+      type: object
+      required:
+        - document_id
+        - document_title
+        - page
+        - text_snippet
+      properties:
+        document_id:
+          type: string
+        document_title:
+          type: string
+        page:
+          type: integer
+        text_snippet:
+          type: string
+    ChatResponse:
+      type: object
+      required:
+        - conversation_id
+        - message
+        - citations
+        - suggested_actions
+      properties:
+        conversation_id:
+          type: string
+        message:
+          type: string
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Citation'
+        workflow_id:
+          type: string
+          nullable: true
+        suggested_actions:
+          type: array
+          items:
+            type: string
+    ChatResponseEnvelope:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/ChatResponse'
+        error:
+          type: string
+          nullable: true
