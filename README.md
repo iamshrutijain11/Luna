@@ -1,109 +1,100 @@
-# Luma — AI-Powered Personal Paperwork Assistant
-**Amazon Developer Hackathon 2026 — Alexa+ Track**
+# LifeDesk Backend
 
-Luma is an advanced agentic paperwork assistant that transforms complex personal documents (warranties, purchase receipts, utility bills, claims) into actionable workflows through natural conversation.
+LifeDesk is an AI-powered document-to-action assistant built for the **Amazon Developer Hackathon 2026 — Alexa+ Track**.
+
+Users upload documents such as warranties, purchase invoices, and utility bills. LifeDesk extracts important details, identifies requirements, detects missing information, and prepares reviewable actions.
 
 ---
 
 ## Architecture Overview
 
+LifeDesk follows a clean layered architecture:
+
 ```
-LUMA/
-│
-├── frontend/                      # PERSON 1: Alexa+ Web & Chat UI
-├── backend/                       # PERSON 2: FastAPI, Extraction, Billing, Workflows
-│   └── app/
-│       ├── main.py                # FastAPI entrypoint (mounts agent + MCP)
-│       ├── agent/                 # PERSON 3: LifeDesk Agent, MCP Server, Orchestrator
-│       │   ├── mcp/               # FastMCP Server (Streamable HTTP) & Client
-│       │   ├── orchestrator.py    # Multi-provider Orchestration Engine
-│       │   ├── router.py          # POST /api/assistant/chat Router
-│       │   ├── memory.py          # Session & Conversational Turn State
-│       │   ├── prompts.py         # Guardrails, Security & System Prompts
-│       │   ├── README.md          # Person 2 Integration Guide
-│       │   └── tests/             # Comprehensive Test Suite (14 Tests)
-│       ├── services/              # Structured Document & Domain Logic
-│       └── models/                # Document & Workflow Data Schemas
-│
-├── ai-agent/                      # PERSON 3 (Primary AI agent package)
-│   └── luma_agent/
-│       ├── providers/             # Pluggable LLM backends (Gemini, Groq, Ollama, Bedrock)
-│       ├── mcp/                   # FastMCP Streamable HTTP server & client
-│       ├── orchestrator.py        # Core agentic reasoning loop
-│       ├── router.py              # FastAPI chat router
-│       ├── memory.py              # In-memory conversation session store
-│       ├── prompts.py             # System prompt & security guardrails
-│       └── tests/                 # 26 tests (unit + live provider integration)
-│
-├── contracts/                     # Frozen OpenAPI Contracts & Schemas
-└── README.md
+FastAPI API Routers (backend/app/api/routers)
+    ↓
+Application Services (backend/app/services)
+    ↓
+Document & Workflow Domain Logic (backend/app/domain)
+    ↓
+Persistence Repositories (backend/app/repositories)
+    ↓
+Database (SQLite / SQLAlchemy) & File Storage (storage/)
 ```
 
----
-
-## LLM Provider System
-
-The agent supports 4 configurable providers (set `LLM_PROVIDER` in `.env`):
-
-| Provider | Variable | Notes |
-|---|---|---|
-| **Google Gemini** (default) | `LLM_PROVIDER=gemini` | Free tier, model: `gemini-2.5-flash` |
-| Groq Cloud | `LLM_PROVIDER=groq` | Free tier, fast inference |
-| Ollama (local) | `LLM_PROVIDER=ollama` | Fully offline, no API key needed |
-| Amazon Bedrock | `LLM_PROVIDER=bedrock` | Optional, requires AWS credentials |
-
-If no API key is provided, the agent automatically falls back to its deterministic document reasoning engine — no crashes, no hallucinations.
+### Key Modules:
+- `backend/app/main.py`: Entry point, lifespan management, CORS configuration, and Person 3 router/MCP integration wiring.
+- `backend/app/config.py`: Centralized configuration settings and storage path enforcement.
+- `backend/app/core/`: Database engine/session management (`database.py`), domain exceptions (`exceptions.py`), and security sanitization & signature inspection (`security.py`).
+- `backend/app/models/`: SQLAlchemy persistent models for `Document`, `ExtractedField`, `Workflow`, and `Approval`.
+- `backend/app/schemas/`: Pydantic V2 request and response contracts strictly mirroring `contracts/openapi.yaml`.
+- `backend/app/domain/extraction/`: PyMuPDF digital PDF extractor, Pillow image inspector, scanned detection without fabrication, and deterministic pattern parsers.
+- `backend/app/domain/workflows/`: Strict lifecycle state machine, date-based warranty eligibility evaluator, utility bill comparative analyzer, and ReportLab PDF artifact generator.
+- `backend/app/services/`: Application services for document ingestion, workflow lifecycle, and Person 3 agent integration interfaces (`agent_interface.py`).
 
 ---
 
-## Key Features
+## API Endpoints Summary
 
-1. **Evidence-Based Reasoning & Grounded Citations**: Every claim cites verified document title, page number, and text snippet. No hallucinated amounts or dates.
-2. **Model Context Protocol (MCP) Streamable HTTP**: Modern Streamable HTTP transport (protocol `2025-11-25`) exposing 7 typed tools — compatible with MCP Inspector and Alexa+ orchestrators.
-3. **Conversational Workflows & Safe Actions**:
-   - Warranty Coverage: Identifies exclusions, checks active policy windows, prepares claim drafts (`DRAFT_PENDING_USER_APPROVAL`).
-   - Electricity Bill Comparison: Deterministic variance breakdown between consecutive billing cycles.
-   - Follow-up Memory: Maintains session state across turns using `conversation_id`.
-4. **Prompt Injection & Security Guardrails**: Retrieved PDF text is handled strictly as passive evidence; embedded prompt injections cannot trigger unauthorized operations.
-5. **No Autonomous Actions**: All workflows are saved as `DRAFT_PENDING_USER_APPROVAL` — the agent never submits or approves anything without explicit user authorization.
+- `GET /api/health` — Service health check and version.
+- `POST /api/documents` — Secure file upload (PDF/JPEG/PNG), magic byte verification, automated extraction.
+- `GET /api/documents` — Paginated list of documents with optional status/type filtering.
+- `GET /api/documents/{id}` — Document metadata.
+- `GET /api/documents/{id}/download` — Stream raw stored document file.
+- `GET /api/documents/{id}/analysis` — Provenance-backed extracted facts, page numbers, and excerpts.
+- `POST /api/workflows` — Initialize action workflow (`warranty_claim` or `utility_bill_assistant`).
+- `GET /api/workflows/{id}` — Workflow status, collected facts, eligibility, and missing requirements.
+- `POST /api/workflows/{id}/approve` — Explicit user approval, state transition to `completed`, and PDF artifact generation.
+- `GET /api/workflows/{id}/artifact` — Download generated PDF service packet or inquiry letter.
 
 ---
 
-## Running the Full Test Suite
+## Agent Integration Guide (Person 3)
 
+Person 3 owns `backend/app/agent/**`. The backend provides clean, typed interfaces and Pydantic return models in `backend.app.services.agent_interface`:
+
+```python
+from backend.app.services.agent_interface import (
+    list_documents,
+    get_document_details,
+    get_document_analysis,
+    check_warranty_requirements,
+    analyze_bill,
+    prepare_workflow,
+    get_workflow_status,
+)
+```
+
+### Auto-Mounting:
+In `backend/app/main.py`, the backend automatically discovers and mounts:
+1. `backend.app.agent.router.router` at `/api/agent`.
+2. `backend.app.agent.mcp.mcp_app` ASGI application at `/mcp`.
+3. `backend.app.agent.mcp_lifespan` inside the FastAPI lifespan context manager.
+
+---
+
+## How to Run & Test
+
+### 1. Install Dependencies
 ```powershell
-# Run all 26 tests (unit + live Gemini + live Groq)
-$env:PYTHONPATH=".;ai-agent"
-pytest ai-agent/luma_agent/tests/ -v
+pip install -r backend/requirements.txt
 ```
 
-Expected output: `26 passed` ✅
-
----
-
-## Starting the Backend Server
-
+### 2. Run Test Suite
 ```powershell
-$env:PYTHONPATH=".;ai-agent"
-uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
+python -m pytest -v backend/tests
 ```
 
-API available at: `http://127.0.0.1:8000`
-MCP server at: `http://127.0.0.1:8000/mcp`
-API docs at: `http://127.0.0.1:8000/docs`
-
----
-
-## Chat API
-
-**Endpoint**: `POST /api/assistant/chat`
-
-```json
-{
-  "conversation_id": "conv_001",
-  "message": "Can I claim my laptop warranty?",
-  "document_ids": []
-}
+### 3. Run System Verification / Smoke Test
+```powershell
+python scripts/verify_system.py
 ```
 
-Response: `ChatResponseEnvelope` — see `contracts/openapi.yaml` for full schema.
+### 4. Start Local Development Server
+```powershell
+uvicorn backend.app.main:app --reload --port 8000
+```
+API Documentation will be available at:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+- OpenAPI JSON: `http://localhost:8000/openapi.json`

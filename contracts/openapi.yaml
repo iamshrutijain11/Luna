@@ -1,13 +1,18 @@
 openapi: 3.1.0
 info:
-  title: Luma Paperwork Assistant API
+  title: LifeDesk API
+  description: LifeDesk — AI-powered document-to-action assistant (Amazon Developer Hackathon 2026 - Alexa+ Track).
   version: 1.0.0
-  description: Frozen API contracts for Luma AI-powered personal paperwork assistant.
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
 paths:
   /api/assistant/chat:
     post:
       summary: Send a conversational turn to LifeDesk assistant
       operationId: assistantChat
+      tags: [Assistant]
       requestBody:
         required: true
         content:
@@ -25,8 +30,588 @@ paths:
           description: Invalid request
         '500':
           description: Internal server error
+
+  /api/health:
+    get:
+      summary: Health check
+      description: Returns service health status and API version.
+      operationId: get_health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/documents:
+    post:
+      summary: Upload document
+      description: Uploads a document (PDF, JPEG, PNG), validates file signature, enforces size limits, registers document record, and triggers extraction.
+      operationId: upload_document
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Document file (PDF, JPEG, PNG).
+                document_type:
+                  type: string
+                  description: Optional document type hint (e.g. warranty, invoice, utility_bill).
+                  enum: [warranty, invoice, utility_bill, unknown]
+                  default: unknown
+      responses:
+        '201':
+          description: Document successfully uploaded and queued/processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: File size exceeds maximum allowed limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported media type or invalid file signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List documents
+      description: Retrieve a paginated list of uploaded documents with optional filtering.
+      operationId: list_documents
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [uploaded, processing, processed, needs_ocr, failed]
+        - name: document_type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [warranty, invoice, utility_bill, unknown]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+
+  /api/documents/{id}:
+    get:
+      summary: Get document details
+      description: Retrieve metadata and processing status for a single document.
+      operationId: get_document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/documents/{id}/download:
+    get:
+      summary: Download document file
+      description: Stream the raw stored document file.
+      operationId: download_document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document file content
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/documents/{id}/analysis:
+    get:
+      summary: Get document analysis
+      description: Returns extracted fields, confidence scores, source page numbers, and provenance excerpts.
+      operationId: get_document_analysis
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document extraction analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentAnalysisResponse'
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/workflows:
+    post:
+      summary: Create workflow
+      description: Initialize a new action workflow (e.g. warranty claim preparation or utility bill assistance).
+      operationId: create_workflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowCreateRequest'
+      responses:
+        '201':
+          description: Workflow created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '400':
+          description: Invalid request parameters or missing documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Linked document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/workflows/{id}:
+    get:
+      summary: Get workflow details
+      description: Retrieve workflow state, collected facts, identified missing requirements, and artifact status.
+      operationId: get_workflow
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workflow details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '404':
+          description: Workflow not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/workflows/{id}/approve:
+    post:
+      summary: Approve workflow action
+      description: Approve a workflow in ready_for_review state, trigger final artifact generation, and transition workflow to approved/completed.
+      operationId: approve_workflow
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalRequest'
+      responses:
+        '200':
+          description: Workflow approved and artifact generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalResponse'
+        '400':
+          description: Invalid approval request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Workflow not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Invalid workflow state for approval (e.g. already approved or missing information)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/workflows/{id}/artifact:
+    get:
+      summary: Download workflow artifact
+      description: Download the generated PDF artifact (service request packet or inquiry letter).
+      operationId: download_workflow_artifact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Generated PDF artifact
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Artifact or workflow not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Artifact has not been generated yet (workflow not approved)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - version
+        - timestamp
+      properties:
+        status:
+          type: string
+          example: healthy
+        version:
+          type: string
+          example: 1.0.0
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: NOT_FOUND
+        message:
+          type: string
+          example: Requested resource was not found
+        details:
+          type: object
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+
+    DocumentResponse:
+      type: object
+      required:
+        - id
+        - original_filename
+        - document_type
+        - mime_type
+        - size_bytes
+        - status
+        - uploaded_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        original_filename:
+          type: string
+        document_type:
+          type: string
+          enum: [warranty, invoice, utility_bill, unknown]
+        mime_type:
+          type: string
+        size_bytes:
+          type: integer
+        status:
+          type: string
+          enum: [uploaded, processing, processed, needs_ocr, failed]
+        uploaded_at:
+          type: string
+          format: date-time
+
+    DocumentListResponse:
+      type: object
+      required:
+        - items
+        - total
+        - limit
+        - offset
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentResponse'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    ExtractedFieldResponse:
+      type: object
+      required:
+        - id
+        - document_id
+        - field_name
+        - field_value
+        - extraction_method
+      properties:
+        id:
+          type: string
+          format: uuid
+        document_id:
+          type: string
+          format: uuid
+        field_name:
+          type: string
+        field_value:
+          type: string
+        source_page:
+          type: integer
+          nullable: true
+        source_excerpt:
+          type: string
+          nullable: true
+        extraction_method:
+          type: string
+          enum: [digital_pdf, ocr, deterministic, heuristic, llm]
+        confidence_if_available:
+          type: number
+          nullable: true
+
+    DocumentAnalysisResponse:
+      type: object
+      required:
+        - document_id
+        - document_type
+        - status
+        - extracted_fields
+        - summary
+      properties:
+        document_id:
+          type: string
+          format: uuid
+        document_type:
+          type: string
+        status:
+          type: string
+        extracted_fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExtractedFieldResponse'
+        summary:
+          type: object
+          additionalProperties: true
+
+    WorkflowCreateRequest:
+      type: object
+      required:
+        - workflow_type
+        - linked_document_ids
+      properties:
+        workflow_type:
+          type: string
+          enum: [warranty_claim, utility_bill_assistant]
+        linked_document_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+        initial_data:
+          type: object
+          description: User-provided inputs such as issue_description, custom parameters, customer contact.
+          default: {}
+
+    WorkflowResponse:
+      type: object
+      required:
+        - id
+        - workflow_type
+        - status
+        - linked_document_ids
+        - collected_information
+        - missing_requirements
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        workflow_type:
+          type: string
+          enum: [warranty_claim, utility_bill_assistant]
+        status:
+          type: string
+          enum: [draft, needs_information, ready_for_review, approved, completed, failed]
+        linked_document_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        collected_information:
+          type: object
+          additionalProperties: true
+        missing_requirements:
+          type: array
+          items:
+            type: string
+        generated_artifact_path:
+          type: string
+          nullable: true
+        artifact_available:
+          type: boolean
+          default: false
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ApprovalRequest:
+      type: object
+      required:
+        - approved_action
+      properties:
+        approved_action:
+          type: string
+          example: generate_claim_packet
+        notes:
+          type: string
+          nullable: true
+
+    ApprovalResponse:
+      type: object
+      required:
+        - approval_id
+        - workflow_id
+        - approved_action
+        - approved_at
+        - resulting_status
+        - workflow
+      properties:
+        approval_id:
+          type: string
+          format: uuid
+        workflow_id:
+          type: string
+          format: uuid
+        approved_action:
+          type: string
+        approved_at:
+          type: string
+          format: date-time
+        resulting_status:
+          type: string
+        workflow:
+          $ref: '#/components/schemas/WorkflowResponse'
+
     ChatRequest:
       type: object
       required:
@@ -43,6 +628,7 @@ components:
           items:
             type: string
           description: Optional list of document IDs relevant to the turn
+
     Citation:
       type: object
       required:
@@ -59,6 +645,7 @@ components:
           type: integer
         text_snippet:
           type: string
+
     ChatResponse:
       type: object
       required:
@@ -82,6 +669,7 @@ components:
           type: array
           items:
             type: string
+
     ChatResponseEnvelope:
       type: object
       required:
@@ -95,3 +683,4 @@ components:
         error:
           type: string
           nullable: true
+

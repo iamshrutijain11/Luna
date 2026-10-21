@@ -1,1 +1,1 @@
-# Luma Backend Package
+"""Backend package root."""

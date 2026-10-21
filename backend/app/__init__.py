@@ -1,1 +1,3 @@
-# Luma Backend App Package
+"""LifeDesk Backend Application Package."""
+
+__version__ = "1.0.0"

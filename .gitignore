@@ -1,9 +1,32 @@
+# Python bytecode and virtual environment
 __pycache__/
-*.pyc
-.pytest_cache/
-.env
+*.py[cod]
+*$py.class
 .venv/
-node_modules/
-dist/
-build/
-*.egg-info/
+venv/
+ENV/
+env/
+
+# Databases
+*.db
+*.sqlite3
+lifedesk.db
+test_lifedesk.db
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Storage (do not commit uploaded personal files or generated artifacts)
+storage/documents/*
+storage/artifacts/*
+!storage/documents/.gitkeep
+!storage/artifacts/.gitkeep
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
