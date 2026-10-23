@@ -24,24 +24,37 @@ import {
 import { api } from '../lib/api';
 import { RecentDocumentItem } from '../types/api';
 
-const mapBackendDoc = (d: any): RecentDocumentItem => ({
-  id: d.id,
-  title: d.title,
-  fileName: d.file_name || `${d.title}.pdf`,
-  uploadedAt: d.upload_date || new Date().toISOString(),
-  formattedDate: d.upload_date ? new Date(d.upload_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'In vault',
-  documentType: (d.document_type || 'other') as any,
-  badgeLabel: d.document_type === 'utility_bill' ? 'BILL' : (d.document_type || 'doc').toUpperCase(),
-  badgeVariant: (
-    d.document_type === 'invoice' ? 'lavender' :
-    d.document_type === 'warranty' ? 'amber' :
-    d.document_type === 'utility_bill' ? 'coral' :
-    d.document_type === 'insurance' ? 'rose' :
-    d.document_type === 'health' ? 'emerald' : 'lavender'
-  ) as any,
-  fileSize: `${d.page_count || 1} page${d.page_count !== 1 ? 's' : ''}`,
-  pageCount: d.page_count || 1,
-});
+const mapBackendDoc = (d: any): RecentDocumentItem => {
+  const dateStr = d.upload_date || d.uploaded_at;
+  const fileName = d.file_name || d.original_filename || `${d.title || 'document'}.pdf`;
+  const title = d.title || d.original_filename || `Document ${d.id}`;
+  const docType = (d.document_type || 'other').toLowerCase();
+
+  return {
+    id: d.id,
+    title,
+    fileName,
+    uploadedAt: dateStr || new Date().toISOString(),
+    formattedDate: dateStr
+      ? new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+      : 'In vault',
+    documentType: (docType || 'other') as any,
+    badgeLabel: docType === 'utility_bill' ? 'BILL' : docType.toUpperCase(),
+    badgeVariant: (
+      docType === 'invoice' ? 'lavender' :
+      docType === 'warranty' ? 'amber' :
+      docType === 'utility_bill' ? 'coral' :
+      docType === 'insurance' ? 'rose' :
+      docType === 'health' ? 'emerald' : 'lavender'
+    ) as any,
+    fileSize: d.page_count
+      ? `${d.page_count} page${d.page_count !== 1 ? 's' : ''}`
+      : d.size_bytes
+      ? `${Math.round(d.size_bytes / 1024)} KB`
+      : '1 page',
+    pageCount: d.page_count || 1,
+  };
+};
 
 export const MyDocuments: React.FC = () => {
   const [documents, setDocuments] = useState<RecentDocumentItem[]>([]);
@@ -119,10 +132,17 @@ export const MyDocuments: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setIsUploadModalOpen(false);
-      setUploadSuccessMessage(`"${file.name}" queued — refresh to see after backend processing.`);
-      setTimeout(() => setUploadSuccessMessage(null), 5000);
-      // Re-fetch from backend after short delay
-      setTimeout(() => fetchDocuments(), 2000);
+      try {
+        setUploadSuccessMessage(`Uploading "${file.name}" to LUNA vault...`);
+        await api.uploadDocument(file);
+        setUploadSuccessMessage(`"${file.name}" uploaded and indexed successfully in vault!`);
+        setTimeout(() => setUploadSuccessMessage(null), 5000);
+        await fetchDocuments();
+      } catch (err: any) {
+        const errorMsg = err.response?.data?.error?.message || err.message || 'Failed to upload document';
+        setError(`Upload failed: ${errorMsg}`);
+        setTimeout(() => setError(null), 6000);
+      }
     }
   };
 

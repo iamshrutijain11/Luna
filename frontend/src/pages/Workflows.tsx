@@ -18,33 +18,42 @@ import {
 import { api } from '../lib/api';
 import { WorkflowItem, WorkflowStatus, WorkflowType } from '../types/api';
 
-const mapBackendWorkflow = (w: any): WorkflowItem => ({
-  id: w.id,
-  title: w.title || `Workflow ${w.id}`,
-  workflow_type: (w.workflow_type || 'warranty_claim') as WorkflowType,
-  status: (
-    w.status === 'COMPLETED' ? 'Completed' :
-    w.status === 'FAILED' ? 'Failed' :
-    w.status === 'DRAFT_PENDING_USER_APPROVAL' ? 'Draft' : 'Pending'
-  ) as WorkflowItem['status'],
-  related_document: (w.document_ids && w.document_ids[0]) || 'Document',
-  document_id: (w.document_ids && w.document_ids[0]) || '',
-  created_at: w.created_at || new Date().toISOString(),
-  formatted_date: w.created_at
-    ? new Date(w.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-    : 'Recent',
-  issuer: w.parameters?.product_name || 'LUNA System',
-  description: `${w.workflow_type?.replace(/_/g, ' ')} workflow drafted by LUNA AI. Awaiting your review and explicit approval.`,
-  parameters: w.parameters || {},
-  required_checklist: [
-    { label: 'Document verified in vault', verified: true, evidence: w.document_ids?.[0] },
-    { label: 'Workflow parameters set', verified: true },
-    { label: 'All required information provided', verified: !w.required_missing_items || w.required_missing_items.length === 0 },
-  ],
-  missing_items: w.required_missing_items || [],
-  is_approved: w.is_approved || false,
-  approval_date: w.is_approved ? new Date().toLocaleDateString() : undefined,
-});
+const mapBackendWorkflow = (w: any): WorkflowItem => {
+  const linkedDocs = w.linked_document_ids || w.document_ids || [];
+  const missing = w.missing_requirements || w.required_missing_items || [];
+  const params = w.collected_information || w.parameters || {};
+  const statusStr = (w.status || '').toLowerCase();
+
+  let mappedStatus: WorkflowItem['status'] = 'Pending';
+  if (statusStr === 'completed') mappedStatus = 'Completed';
+  else if (statusStr === 'failed') mappedStatus = 'Failed';
+  else if (statusStr === 'draft' || statusStr === 'draft_pending_user_approval') mappedStatus = 'Draft';
+  else mappedStatus = 'Pending';
+
+  return {
+    id: w.id,
+    title: w.title || `${(w.workflow_type || 'Workflow').replace(/_/g, ' ')} #${w.id.slice(0, 8)}`,
+    workflow_type: (w.workflow_type || 'warranty_claim') as WorkflowType,
+    status: mappedStatus,
+    related_document: linkedDocs[0] || 'Document',
+    document_id: linkedDocs[0] || '',
+    created_at: w.created_at || new Date().toISOString(),
+    formatted_date: w.created_at
+      ? new Date(w.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+      : 'Recent',
+    issuer: params.product_name || params.customer_name || 'LUNA System',
+    description: `${(w.workflow_type || 'Workflow').replace(/_/g, ' ')} workflow drafted by LUNA AI. Awaiting your review and explicit approval.`,
+    parameters: params,
+    required_checklist: [
+      { label: 'Document verified in vault', verified: linkedDocs.length > 0, evidence: linkedDocs[0] },
+      { label: 'Workflow parameters set', verified: Object.keys(params).length > 0 },
+      { label: 'All required information provided', verified: missing.length === 0 },
+    ],
+    missing_items: missing,
+    is_approved: w.is_approved || mappedStatus === 'Completed',
+    approval_date: w.is_approved || mappedStatus === 'Completed' ? new Date().toLocaleDateString() : undefined,
+  };
+};
 
 export const Workflows: React.FC = () => {
   const [workflows, setWorkflows] = useState<WorkflowItem[]>([]);
@@ -124,25 +133,16 @@ export const Workflows: React.FC = () => {
   const handleApproveWorkflow = async (wfId: string) => {
     setIsApproving(true);
     try {
-      // Call real backend approve endpoint
-      const response = await fetch(`/api/workflows/${wfId}/approve`, { method: 'POST' });
-      if (response.ok) {
-        setApprovalConfirmed(true);
-        setTimeout(async () => {
-          setSelectedWorkflow(null);
-          setApprovalConfirmed(false);
-          await fetchWorkflows(); // re-fetch live state
-        }, 1500);
-      } else {
-        // Optimistic update if backend not yet wired
-        setWorkflows((prev) =>
-          prev.map((w) => w.id === wfId ? { ...w, is_approved: true, status: 'Completed' } : w)
-        );
-        setApprovalConfirmed(true);
-        setTimeout(() => { setSelectedWorkflow(null); setApprovalConfirmed(false); }, 1500);
-      }
+      // Call real backend approve endpoint with required approval payload
+      await api.approveWorkflow(wfId, 'generate_claim_packet', 'Approved by user via LUNA Web UI');
+      setApprovalConfirmed(true);
+      setTimeout(async () => {
+        setSelectedWorkflow(null);
+        setApprovalConfirmed(false);
+        await fetchWorkflows(); // re-fetch live state
+      }, 1500);
     } catch {
-      // Optimistic fallback
+      // Optimistic update
       setWorkflows((prev) =>
         prev.map((w) => w.id === wfId ? { ...w, is_approved: true, status: 'Completed' } : w)
       );

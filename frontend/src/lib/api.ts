@@ -77,7 +77,7 @@ class LunaApiClient {
         success: false,
         data: {
           conversation_id: request.conversation_id || 'offline_conv',
-          message: `⚠️ LUNA backend is unreachable. Start it with:\n  $env:PYTHONPATH=".;ai-agent"\n  uvicorn backend.app.main:app --port 8000`,
+          message: `⚠️ LUNA backend is unreachable. Start it with:\n  uvicorn backend.app.main:app --port 8000`,
           citations: [],
           workflow_id: null,
           suggested_actions: ['Start the backend server', 'Retry your question'],
@@ -88,11 +88,45 @@ class LunaApiClient {
   }
 
   /**
-   * Fetch documents from backend — THROWS on error (no silent fallback)
+   * Fetch documents from backend — THROWS on error (no silent fallback).
+   * Unwraps OpenAPI DocumentListResponse ({ items: [...] }) or direct array.
    */
   async listDocuments(documentType?: string): Promise<DocumentMetadata[]> {
     const params = documentType ? { document_type: documentType } : {};
-    const response = await this.client.get<DocumentMetadata[]>('/api/documents', { params });
+    const response = await this.client.get<any>('/api/documents', { params });
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    if (response.data && Array.isArray(response.data.items)) {
+      return response.data.items;
+    }
+    return [];
+  }
+
+  /**
+   * Upload a document to the backend vault — multipart/form-data POST /api/documents
+   */
+  async uploadDocument(file: File, documentType?: string): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (documentType && documentType !== 'unknown') {
+      formData.append('document_type', documentType);
+    }
+    const response = await this.client.post('/api/documents', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
+  /**
+   * Download a raw document file from the backend vault
+   */
+  async downloadDocument(documentId: string): Promise<Blob> {
+    const response = await this.client.get(`/api/documents/${documentId}/download`, {
+      responseType: 'blob',
+    });
     return response.data;
   }
 
@@ -109,10 +143,42 @@ class LunaApiClient {
   }
 
   /**
-   * Fetch workflows from backend — THROWS on error (no silent fallback)
+   * Fetch workflows from backend — THROWS on error (no silent fallback).
+   * Unwraps OpenAPI WorkflowListResponse ({ items: [...] }) or direct array.
    */
   async listWorkflows(): Promise<WorkflowDraft[]> {
-    const response = await this.client.get<WorkflowDraft[]>('/api/workflows');
+    const response = await this.client.get<any>('/api/workflows');
+    if (Array.isArray(response.data)) {
+      return response.data;
+    }
+    if (response.data && Array.isArray(response.data.items)) {
+      return response.data.items;
+    }
+    return [];
+  }
+
+  /**
+   * Explicit user authorization to approve workflow and generate final artifact
+   */
+  async approveWorkflow(
+    workflowId: string,
+    approvedAction: string = 'generate_claim_packet',
+    notes?: string
+  ): Promise<any> {
+    const response = await this.client.post(`/api/workflows/${workflowId}/approve`, {
+      approved_action: approvedAction,
+      notes,
+    });
+    return response.data;
+  }
+
+  /**
+   * Download generated PDF artifact for a completed workflow
+   */
+  async downloadWorkflowArtifact(workflowId: string): Promise<Blob> {
+    const response = await this.client.get(`/api/workflows/${workflowId}/artifact`, {
+      responseType: 'blob',
+    });
     return response.data;
   }
 }

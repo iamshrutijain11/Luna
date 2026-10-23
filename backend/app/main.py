@@ -2,15 +2,14 @@
 main.py - LUNA Paperwork Assistant FastAPI Application Entrypoint.
 
 Mounts the AI Agent chat router, MCP Streamable HTTP server,
-and complete document vault + workflow management APIs for the frontend.
+and OpenAPI document vault + workflow management APIs for the frontend.
 
 Run:
-    $env:PYTHONPATH=".;ai-agent"
     uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 """
 
-from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, Query, status
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -20,25 +19,26 @@ from luna_agent.router import agent_router
 from luna_agent.mcp.server import get_mcp_asgi_app
 
 # ────────────────────────────────────────────────────────────────────────────
-# Services & Models (Person 2)
+# Core Database & Error Handling
 # ────────────────────────────────────────────────────────────────────────────
-from backend.app.services.extraction import DocumentExtractionService, _DOCUMENTS_DB, _ANALYSES_DB
-from backend.app.services.workflow_service import WorkflowBackendService, _WORKFLOWS_DB
-from backend.app.models.document import DocumentMetadata, DocumentAnalysis
-from backend.app.models.workflow import WorkflowDraft
+from backend.app.core.database import init_db
+from backend.app.api.error_handlers import register_error_handlers
 
-# Seed sample active workflow draft for demo if empty
-if not _WORKFLOWS_DB:
-    WorkflowBackendService.prepare_workflow(
-        workflow_type="warranty_claim",
-        document_ids=["doc_inv_101", "doc_war_102"],
-        parameters={
-            "product_name": "Dell XPS 15 9530 Laptop",
-            "serial_number": "SN-DELL-98721X",
-            "purchase_date": "2025-06-15",
-            "defect_description": None,
-        }
-    )
+# ────────────────────────────────────────────────────────────────────────────
+# OpenAPI Routers (Person 1 & 2)
+# ────────────────────────────────────────────────────────────────────────────
+from backend.app.api.routers.health import router as health_router
+from backend.app.api.routers.documents import router as documents_router
+from backend.app.api.routers.workflows import router as workflows_router
+from backend.app.schemas.common import HealthResponse
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize database tables on startup
+    init_db()
+    yield
+
 
 # ────────────────────────────────────────────────────────────────────────────
 # FastAPI Application
@@ -53,6 +53,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -67,10 +68,15 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "*",
     ],
-    allow_credentials=False,  # False when using wildcard or universal access
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ────────────────────────────────────────────────────────────────────────────
+# Global Error Handlers (Contract-compliant { "error": { "code", "message" } })
+# ────────────────────────────────────────────────────────────────────────────
+register_error_handlers(app)
 
 # ────────────────────────────────────────────────────────────────────────────
 # AI Agent Chat Router → POST /api/assistant/chat
@@ -83,90 +89,17 @@ app.include_router(agent_router)
 app.mount("/mcp", get_mcp_asgi_app())
 
 # ────────────────────────────────────────────────────────────────────────────
-# Health Probe
+# Health Endpoints → /api/health and /health
 # ────────────────────────────────────────────────────────────────────────────
-@app.get("/health", tags=["system"])
-async def health_check():
+app.include_router(health_router, prefix="/api")
+
+@app.get("/health", response_model=HealthResponse, tags=["Health"])
+def root_health() -> HealthResponse:
     """Quick liveness probe — returns OK if the server is running."""
-    return {"status": "ok", "service": "LUNA-paperwork-assistant", "version": "1.0.0"}
-
-
-# ────────────────────────────────────────────────────────────────────────────
-# Document Vault API Endpoints (called by frontend /api/documents)
-# ────────────────────────────────────────────────────────────────────────────
-@app.get(
-    "/api/documents",
-    response_model=List[DocumentMetadata],
-    tags=["documents"],
-    summary="List all documents in vault"
-)
-async def list_documents(document_type: Optional[str] = Query(None, description="Filter by document type")):
-    return DocumentExtractionService.list_documents(document_type=document_type)
-
-
-@app.get(
-    "/api/documents/{document_id}",
-    response_model=DocumentMetadata,
-    tags=["documents"],
-    summary="Get document metadata"
-)
-async def get_document(document_id: str):
-    doc = DocumentExtractionService.get_document_details(document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail=f"Document {document_id} not found")
-    return doc
-
-
-@app.get(
-    "/api/documents/{document_id}/analysis",
-    response_model=DocumentAnalysis,
-    tags=["documents"],
-    summary="Get structured extraction and intelligence"
-)
-async def get_document_analysis(document_id: str):
-    analysis = DocumentExtractionService.get_document_analysis(document_id)
-    if not analysis:
-        raise HTTPException(status_code=404, detail=f"Analysis for document {document_id} not found")
-    return analysis
-
+    return HealthResponse(status="healthy", version="1.0.0")
 
 # ────────────────────────────────────────────────────────────────────────────
-# Workflow Management API Endpoints (called by frontend /api/workflows)
+# Document Vault & Workflow Management Endpoints → /api/documents, /api/workflows
 # ────────────────────────────────────────────────────────────────────────────
-@app.get(
-    "/api/workflows",
-    response_model=List[WorkflowDraft],
-    tags=["workflows"],
-    summary="List all active workflows and drafts"
-)
-async def list_workflows():
-    return list(_WORKFLOWS_DB.values())
-
-
-@app.get(
-    "/api/workflows/{workflow_id}",
-    response_model=WorkflowDraft,
-    tags=["workflows"],
-    summary="Get workflow draft status"
-)
-async def get_workflow(workflow_id: str):
-    wf = WorkflowBackendService.get_workflow_status(workflow_id)
-    if not wf:
-        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
-    return wf
-
-
-@app.post(
-    "/api/workflows/{workflow_id}/approve",
-    response_model=WorkflowDraft,
-    tags=["workflows"],
-    summary="User explicit authorization to approve and submit a workflow"
-)
-async def approve_workflow(workflow_id: str):
-    wf = WorkflowBackendService.get_workflow_status(workflow_id)
-    if not wf:
-        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
-    wf.is_approved = True
-    wf.is_submitted = True
-    wf.status = "COMPLETED"
-    return wf
+app.include_router(documents_router, prefix="/api")
+app.include_router(workflows_router, prefix="/api")
