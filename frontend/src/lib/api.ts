@@ -1,6 +1,7 @@
 /**
  * LUNA Paperwork Assistant - Typed API Client
- * Aligned with contracts/openapi.yaml
+ * All methods throw on error — callers handle errors explicitly.
+ * No silent fallbacks to mock/local data.
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
@@ -18,7 +19,7 @@ const getApiBaseUrl = (): string => {
       return import.meta.env.VITE_API_URL;
     }
   }
-  // When running in browser with Vite dev server proxy or same origin, use relative paths
+  // When running in browser with Vite dev server proxy, use relative paths
   if (typeof window !== 'undefined') {
     return '';
   }
@@ -42,17 +43,13 @@ class LunaApiClient {
   }
 
   /**
-   * Health probe to check if the backend service is running
+   * Health probe — returns connection status, never throws
    */
   async checkHealth(): Promise<{ connected: boolean; status: string; version?: string }> {
     try {
       const response = await this.client.get('/health', { timeout: 3000 });
       if (response.status === 200) {
-        return {
-          connected: true,
-          status: response.data?.status || 'ok',
-          version: response.data?.version || '1.0.0',
-        };
+        return { connected: true, status: response.data?.status || 'ok', version: response.data?.version || '1.0.0' };
       }
       return { connected: false, status: 'unexpected_status' };
     } catch {
@@ -62,7 +59,7 @@ class LunaApiClient {
 
   /**
    * Send a conversational turn to LUNA AI Assistant
-   * Target endpoint: POST /api/assistant/chat (contracts/openapi.yaml)
+   * Returns error envelope instead of throwing — chat UI handles the message display
    */
   async sendAssistantChat(request: ChatRequest): Promise<ChatResponseEnvelope> {
     try {
@@ -80,10 +77,10 @@ class LunaApiClient {
         success: false,
         data: {
           conversation_id: request.conversation_id || 'offline_conv',
-          message: `LUNA Backend is currently unreachable. Please verify that the FastAPI backend server is running ($env:PYTHONPATH=".;ai-agent"; uvicorn backend.app.main:app --port 8000).`,
+          message: `⚠️ LUNA backend is unreachable. Start it with:\n  $env:PYTHONPATH=".;ai-agent"\n  uvicorn backend.app.main:app --port 8000`,
           citations: [],
           workflow_id: null,
-          suggested_actions: ['Check backend connection', 'Upload a document', 'Retry query'],
+          suggested_actions: ['Start the backend server', 'Retry your question'],
         },
         error: errorMessage,
       };
@@ -91,40 +88,32 @@ class LunaApiClient {
   }
 
   /**
-   * Fetch documents list from backend if available
+   * Fetch documents from backend — THROWS on error (no silent fallback)
    */
   async listDocuments(documentType?: string): Promise<DocumentMetadata[]> {
-    try {
-      const params = documentType ? { document_type: documentType } : {};
-      const response = await this.client.get<DocumentMetadata[]>('/api/documents', { params, timeout: 3000 });
-      return response.data;
-    } catch {
-      return [];
-    }
+    const params = documentType ? { document_type: documentType } : {};
+    const response = await this.client.get<DocumentMetadata[]>('/api/documents', { params });
+    return response.data;
   }
 
   /**
-   * Get document analysis from backend if available
+   * Get document analysis from backend — THROWS on error
    */
   async getDocumentAnalysis(documentId: string): Promise<DocumentAnalysis | null> {
     try {
-      const response = await this.client.get<DocumentAnalysis>(`/api/documents/${documentId}/analysis`, { timeout: 3000 });
+      const response = await this.client.get<DocumentAnalysis>(`/api/documents/${documentId}/analysis`);
       return response.data;
     } catch {
-      return null;
+      return null; // 404 is acceptable — analysis may not exist yet
     }
   }
 
   /**
-   * Fetch workflows from backend if available
+   * Fetch workflows from backend — THROWS on error (no silent fallback)
    */
   async listWorkflows(): Promise<WorkflowDraft[]> {
-    try {
-      const response = await this.client.get<WorkflowDraft[]>('/api/workflows', { timeout: 3000 });
-      return response.data;
-    } catch {
-      return [];
-    }
+    const response = await this.client.get<WorkflowDraft[]>('/api/workflows');
+    return response.data;
   }
 }
 

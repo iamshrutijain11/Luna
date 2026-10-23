@@ -3,14 +3,13 @@ import { useLocation } from 'react-router-dom';
 import {
   Mic,
   Send,
-  Sparkles,
   Volume2,
   VolumeX,
   RefreshCw,
 } from 'lucide-react';
 import { vaultStore } from '../lib/vaultStore';
 import { api } from '../lib/api';
-import { AssistantChatMessage, Citation } from '../types/api';
+import { AssistantChatMessage } from '../types/api';
 
 export const LunaAssistant: React.FC = () => {
   const location = useLocation();
@@ -86,66 +85,15 @@ export const LunaAssistant: React.FC = () => {
         speakText(res.data.message);
       } else {
         // Fallback: Grounded local vault reasoning
-        generateLocalVaultResponse(query);
+        
       }
     } catch {
-      generateLocalVaultResponse(query);
+      
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const generateLocalVaultResponse = (query: string) => {
-    const lower = query.toLowerCase();
-    let reply = '';
-    let citations: Citation[] = [];
-    let workflowId: string | null = null;
-    let suggestions: string[] = ['List all documents', 'Check upcoming deadlines'];
-
-    if (lower.includes('warranty') || lower.includes('laptop')) {
-      reply =
-        'Based on your TechWorld Laptop Invoice (#INV-2026-001), you have an active 1-year hardware warranty valid through August 15, 2027. It covers manufacturing defects and hardware faults. Accidental drops and liquid damage are excluded. Would you like me to prepare a repair claim workflow?';
-      citations = [
-        {
-          document_id: 'doc_inv_101',
-          document_title: 'Laptop Invoice.pdf',
-          page: 2,
-          text_snippet:
-            'Warranty: 1-Year Limited Manufacturer Hardware Warranty included. Valid through August 15, 2027.',
-        },
-      ];
-      workflowId = 'wf_1';
-      suggestions = ['Prepare warranty claim', 'Check service center location'];
-    } else if (lower.includes('electricity') || lower.includes('bill')) {
-      reply =
-        'Your BSES Electricity Bill for October 2026 is ₹2,140 for 248 kWh of consumption. The payment due date is October 25, 2026 (in 22 days). Verified tariff slab shows normal domestic billing with zero overdue penalties.';
-      citations = [
-        {
-          document_id: 'doc_bill_201',
-          document_title: 'Electricity Bill.pdf',
-          page: 1,
-          text_snippet:
-            'BSES Yamuna Power Ltd. Due Date: 25-OCT-2026. Net Payable: ₹2,140. Units: 248 kWh.',
-        },
-      ];
-      suggestions = ['Schedule payment', 'Compare with previous month'];
-    } else if (lower.includes('renew') || lower.includes('deadline')) {
-      reply =
-        'You have 2 critical upcoming dates within the next 30 days: (1) Laptop warranty claim window on Oct 15, and (2) Electricity bill due on Oct 25. Your Car Insurance policy renewal with ICICI Lombard is due on Nov 12.';
-      suggestions = ['View Important Dates', 'Review car insurance'];
-    } else {
-      reply =
-        `I searched your vault of 8 documents. I found records for your Laptop Invoice, TV Warranty, Electricity Bill, and Insurance. How can I help you with these documents?`;
-      suggestions = ['What should I do with my laptop warranty?', 'Summarize my electricity bill'];
-    }
-
-    vaultStore.addChatMessage('assistant', reply, {
-      citations,
-      workflow_id: workflowId,
-      suggested_actions: suggestions,
-    });
-    speakText(reply);
-  };
 
   const toggleMic = () => {
     if (isListening) {
@@ -200,7 +148,7 @@ export const LunaAssistant: React.FC = () => {
     setIsListening(true);
     setTimeout(() => {
       setIsListening(false);
-      handleSendMessage('What should I do with my laptop warranty?');
+      handleSendMessage('What documents do I have in my vault?');
     }, 2000);
   };
 
