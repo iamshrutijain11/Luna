@@ -165,9 +165,9 @@ export const Workflows: React.FC = () => {
       document_id: '',
       created_at: new Date().toISOString(),
       formatted_date: 'Just now',
-      issuer: 'Shruti Jain',
+      issuer: (typeof window !== 'undefined' && localStorage.getItem('luna_user_session')) ? JSON.parse(localStorage.getItem('luna_user_session')!).name : 'User',
       description: 'User-initiated workflow. LUNA will assist with document matching.',
-      parameters: { 'Workflow Type': newWorkflowType, 'Initiated By': 'Shruti Jain' },
+      parameters: { 'Workflow Type': newWorkflowType, 'Initiated By': (typeof window !== 'undefined' && localStorage.getItem('luna_user_session')) ? JSON.parse(localStorage.getItem('luna_user_session')!).name : 'User' },
       required_checklist: [
         { label: 'Workflow type selected', verified: true },
         { label: 'Documents linked', verified: false },

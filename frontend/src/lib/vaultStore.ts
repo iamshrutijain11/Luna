@@ -17,7 +17,7 @@ import {
 
 const STORAGE_KEY = 'luna_vault_state_v2';
 
-// ─── 1. Reference Documents (Matching Screen 2 Grid) ──────────────────────────
+// â”€â”€â”€ 1. Reference Documents (Matching Screen 2 Grid) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const INITIAL_DOCUMENTS: RecentDocumentItem[] = [
   {
     id: 'doc_inv_101',
@@ -117,12 +117,12 @@ export const INITIAL_DOCUMENTS: RecentDocumentItem[] = [
   },
 ];
 
-// ─── 2. Reference Important Dates (Matching Screen 1) ────────────────────────
+// â”€â”€â”€ 2. Reference Important Dates (Matching Screen 1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const INITIAL_IMPORTANT_DATES: ImportantDateItem[] = [
   {
     id: 'date_1',
     title: 'Laptop warranty expires',
-    issuer: 'TechWorld · Warranty',
+    issuer: 'TechWorld Â· Warranty',
     category: 'Warranty',
     rawDate: '2026-10-15',
     day: '15',
@@ -133,7 +133,7 @@ export const INITIAL_IMPORTANT_DATES: ImportantDateItem[] = [
   {
     id: 'date_2',
     title: 'Electricity bill due',
-    issuer: 'BSES · Bill',
+    issuer: 'BSES Â· Bill',
     category: 'Bill',
     rawDate: '2026-10-25',
     day: '25',
@@ -144,7 +144,7 @@ export const INITIAL_IMPORTANT_DATES: ImportantDateItem[] = [
   {
     id: 'date_3',
     title: 'Car insurance renewal',
-    issuer: 'ICICI Lombard · Insurance',
+    issuer: 'ICICI Lombard Â· Insurance',
     category: 'Insurance',
     rawDate: '2026-11-12',
     day: '12',
@@ -154,7 +154,7 @@ export const INITIAL_IMPORTANT_DATES: ImportantDateItem[] = [
   },
 ];
 
-// ─── 3. Reference Upcoming Actions (Matching Screen 1) ───────────────────────
+// â”€â”€â”€ 3. Reference Upcoming Actions (Matching Screen 1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const INITIAL_UPCOMING_ACTIONS: UpcomingActionItem[] = [
   {
     id: 'act_1',
@@ -180,7 +180,7 @@ export const INITIAL_UPCOMING_ACTIONS: UpcomingActionItem[] = [
   },
 ];
 
-// ─── 4. Reference Workflows (Matching Screen 5) ──────────────────────────────
+// â”€â”€â”€ 4. Reference Workflows (Matching Screen 5) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const INITIAL_WORKFLOWS: WorkflowItem[] = [
   {
     id: 'wf_1',
@@ -224,7 +224,7 @@ export const INITIAL_WORKFLOWS: WorkflowItem[] = [
       'Policy Number': 'POL-MOT-99210-A',
       'Vehicle': 'Sedan - Registration UP-78-AB-1234',
       'Incident Date': '12 Oct 2026',
-      'Claim Amount': '₹12,450',
+      'Claim Amount': 'â‚¹12,450',
     },
     required_checklist: [
       { label: 'Active policy certificate', verified: true, evidence: 'Car Insurance.pdf' },
@@ -248,7 +248,7 @@ export const INITIAL_WORKFLOWS: WorkflowItem[] = [
     parameters: {
       'Account Number': 'CA-908123451',
       'Units Consumed': '248 kWh',
-      'Amount Due': '₹2,140',
+      'Amount Due': 'â‚¹2,140',
       'Status': 'Payment processed successfully',
     },
     required_checklist: [
@@ -285,7 +285,7 @@ export const INITIAL_WORKFLOWS: WorkflowItem[] = [
   },
 ];
 
-// ─── 5. Reference Activity Events (Matching Screen 6) ────────────────────────
+// â”€â”€â”€ 5. Reference Activity Events (Matching Screen 6) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const INITIAL_ACTIVITIES: ActivityEvent[] = [
   {
     id: 'act_ev_1',
@@ -332,7 +332,7 @@ export const INITIAL_ACTIVITIES: ActivityEvent[] = [
   },
 ];
 
-// ─── 6. Document Intelligence Dataset (Matching Screen 3) ───────────────────
+// â”€â”€â”€ 6. Document Intelligence Dataset (Matching Screen 3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const DOCUMENT_INTELLIGENCE_DATA: Record<string, DocumentAnalysisData> = {
   doc_inv_101: {
     document_id: 'doc_inv_101',
@@ -343,7 +343,7 @@ export const DOCUMENT_INTELLIGENCE_DATA: Record<string, DocumentAnalysisData> = 
     summary: 'This is a purchase invoice for a laptop from TechWorld. The product comes with a 1 year warranty.',
     vendor: 'TechWorld',
     product: 'Laptop - XYZ Model',
-    amount: '₹85,000',
+    amount: 'â‚¹85,000',
     issue_date: '15 Aug 2026',
     warranty_period: '1 Year (till 15 Aug 2027)',
     key_dates: [
@@ -359,7 +359,7 @@ export const DOCUMENT_INTELLIGENCE_DATA: Record<string, DocumentAnalysisData> = 
     extracted_fields: {
       'Document Type': 'Invoice',
       'Issue Date': '15 Aug 2026',
-      'Amount': '₹85,000',
+      'Amount': 'â‚¹85,000',
       'Vendor': 'TechWorld',
       'Product': 'Laptop - XYZ Model',
       'Warranty': '1 Year (till 15 Aug 2027)',
@@ -383,7 +383,7 @@ export const DOCUMENT_INTELLIGENCE_DATA: Record<string, DocumentAnalysisData> = 
         document_id: 'doc_inv_101',
         document_title: 'Laptop Invoice.pdf',
         page: 1,
-        text_snippet: 'Item 1: Laptop - XYZ Model (16GB RAM, 512GB SSD). Price: ₹85,000. Total Paid: ₹85,000.',
+        text_snippet: 'Item 1: Laptop - XYZ Model (16GB RAM, 512GB SSD). Price: â‚¹85,000. Total Paid: â‚¹85,000.',
       },
       {
         document_id: 'doc_inv_101',
@@ -400,17 +400,30 @@ export const DOCUMENT_INTELLIGENCE_DATA: Record<string, DocumentAnalysisData> = 
       },
     ],
     raw_text_by_page: {
-      1: 'TechWorld Retail Pvt Ltd\nINVOICE #INV-2026-001\nDate: 15 Aug 2026\nBill To:\nShruti Jain\nKanpur, Uttar Pradesh\n\nItems:\n1. Laptop - XYZ Model - ₹85,000\nTotal: ₹85,000\nThank you for your purchase!',
+      1: 'TechWorld Retail Pvt Ltd\nINVOICE #INV-2026-001\nDate: 15 Aug 2026\nBill To:\nShruti Jain\nKanpur, Uttar Pradesh\n\nItems:\n1. Laptop - XYZ Model - â‚¹85,000\nTotal: â‚¹85,000\nThank you for your purchase!',
       2: 'Warranty Terms & Conditions\nDuration: 12 months from original date of purchase (Expires 15 Aug 2027).\nCovers: Manufacturing defects and hardware faults.\nExclusions: Liquid damage, deliberate misuse, cosmetic wear.',
       3: 'Customer Care & Return Policy\nSupport: support@techworld.in | 1800-200-LUNA\nKeep this invoice as proof of purchase for warranty claims.',
     },
   },
 };
 
-// ─── 7. Default Settings State (Matching Screen 7) ───────────────────────────
+// â”€â”€â”€ 7. Default Settings State (Matching Screen 7) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const getStoredUser = () => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const sess = localStorage.getItem('luna_user_session');
+      if (sess) return JSON.parse(sess);
+    }
+  } catch {
+    // Ignore
+  }
+  return null;
+};
+const storedUser = getStoredUser();
+
 export const INITIAL_SETTINGS: UserSettings = {
-  name: 'Shruti Jain',
-  email: 'shruti.jain@example.com',
+  name: storedUser?.name || 'Shruti Jain',
+  email: storedUser?.email || 'shruti.jain@example.com',
   plan: 'Vault Pro',
   theme: 'lunar',
   glassmorphism: true,
@@ -426,7 +439,7 @@ export const INITIAL_SETTINGS: UserSettings = {
   localVaultOnly: true,
 };
 
-// ─── Store State Container ───────────────────────────────────────────────────
+// â”€â”€â”€ Store State Container â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export interface VaultState {
   documents: RecentDocumentItem[];
   importantDates: ImportantDateItem[];

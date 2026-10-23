@@ -37,7 +37,7 @@ export const Overview: React.FC = () => {
     }, 400);
   };
 
-  const handleLoadDemo = () => {
+  const handleLoadSample = () => {
     vaultStore.loadReferenceData();
   };
 
@@ -45,13 +45,17 @@ export const Overview: React.FC = () => {
     vaultStore.setEmptyState();
   };
 
+  const firstName = vaultState.settings.name
+    ? vaultState.settings.name.split(' ')[0]
+    : 'User';
+
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-200">
       {/* ─── Header Section ──────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-luna-primary tracking-tight font-sans">
-            Good evening, Shruti
+            Good evening, {firstName}
           </h1>
           <p className="text-sm sm:text-base text-luna-secondary mt-1 font-medium">
             Paperwork, simplified.
@@ -68,27 +72,27 @@ export const Overview: React.FC = () => {
             </span>
           </div>
 
-          {/* Quick dataset switcher for testing/reviewing empty vs reference state */}
+          {/* Quick dataset switcher */}
           <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-md p-1 rounded-xl border border-stone-200/60 text-xs shadow-2xs">
             {vaultState.isDemoMode ? (
               <button
                 type="button"
                 onClick={handleClear}
-                title="View empty state"
+                title="Clear current records"
                 className="px-2 py-1 text-luna-secondary hover:text-rose-600 rounded flex items-center gap-1 transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Test Empty State</span>
+                <span className="hidden md:inline">Clear Records</span>
               </button>
             ) : (
               <button
                 type="button"
-                onClick={handleLoadDemo}
-                title="Load hackathon reference data"
+                onClick={handleLoadSample}
+                title="Load sample records"
                 className="px-2 py-1 text-luna-accent hover:text-luna-accent-hover font-medium rounded flex items-center gap-1 transition-colors"
               >
                 <FolderOpen className="w-3.5 h-3.5" />
-                <span>Load Reference Data</span>
+                <span>Load Sample Records</span>
               </button>
             )}
             <button

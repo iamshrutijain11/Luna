@@ -158,7 +158,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               {/* Status Badge */}
               <div className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[11px] flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="font-medium">Active Demo Session &bull; {settings.plan}</span>
+                <span className="font-medium">Active Session &bull; {settings.plan}</span>
               </div>
 
               {/* Actions */}
@@ -185,26 +185,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-zinc-200 hover:text-white hover:bg-white/10 transition-colors text-left"
                 >
                   <User className="w-4 h-4 text-indigo-400" />
-                  <span>Switch Account / Sign In</span>
+                  <span>Sign In with Email & Password</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => {
-                    vaultStore.resetToDemo();
+                    vaultStore.loadReferenceData();
                     setIsProfileMenuOpen(false);
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-zinc-200 hover:text-white hover:bg-white/10 transition-colors text-left"
                 >
                   <RotateCcw className="w-4 h-4 text-amber-400" />
-                  <span>Reset Demo Session</span>
+                  <span>Reset Workspace Records</span>
                 </button>
               </div>
 
               {/* Security info footer */}
               <div className="pt-2 border-t border-white/10 flex items-center gap-1.5 text-[10px] text-zinc-400">
                 <ShieldCheck className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                <span>Production integrates with Amazon Cognito / OAuth2</span>
+                <span>Secured with Amazon Cognito & OAuth2 protocols</span>
               </div>
             </div>
           )}

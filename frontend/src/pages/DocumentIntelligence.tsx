@@ -166,7 +166,7 @@ export const DocumentIntelligence: React.FC = () => {
                       </span>
                       <div className="text-[10px] text-gray-600 bg-gray-50 p-2 rounded">
                         <p className="font-semibold text-gray-800">Bill To:</p>
-                        <p>Shruti Jain</p>
+                        <p>{vaultStore.getState().settings.name || 'Account Holder'}</p>
                         <p>Kanpur, Uttar Pradesh</p>
                       </div>
                     </div>
