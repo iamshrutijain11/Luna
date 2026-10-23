@@ -94,6 +94,20 @@ class WorkflowService:
             raise ResourceNotFoundException("Workflow", workflow_id)
         return wf
 
+    def list_workflows(
+        self,
+        workflow_type: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[Workflow], int]:
+        return self.workflow_repo.list(
+            workflow_type=workflow_type,
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
+
     def approve_workflow(
         self,
         workflow_id: str,

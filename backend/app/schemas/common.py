@@ -82,6 +82,13 @@ class WorkflowResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class WorkflowListResponse(BaseModel):
+    items: List[WorkflowResponse]
+    total: int
+    limit: int
+    offset: int
+
+
 class ApprovalRequest(BaseModel):
     approved_action: str
     notes: Optional[str] = None

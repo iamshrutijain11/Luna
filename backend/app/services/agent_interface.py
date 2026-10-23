@@ -18,6 +18,7 @@ from backend.app.schemas.common import (
     DocumentAnalysisResponse,
     DocumentListResponse,
     DocumentResponse,
+    WorkflowListResponse,
     WorkflowResponse,
 )
 from backend.app.services.document_service import DocumentService
@@ -201,6 +202,47 @@ class AgentServiceBridge:
             if self._external_db is None:
                 db.close()
 
+    def list_workflows(
+        self,
+        workflow_type: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> WorkflowListResponse:
+        """Lists all workflows with optional type and status filtering."""
+        db = self._get_session()
+        try:
+            svc = WorkflowService(db)
+            items, total = svc.list_workflows(
+                workflow_type=workflow_type,
+                status=status,
+                limit=limit,
+                offset=offset,
+            )
+            return WorkflowListResponse(
+                items=[
+                    WorkflowResponse(
+                        id=wf.id,
+                        workflow_type=wf.workflow_type,
+                        status=wf.status,
+                        linked_document_ids=wf.linked_document_ids,
+                        collected_information=wf.collected_information,
+                        missing_requirements=wf.missing_requirements,
+                        generated_artifact_path=wf.generated_artifact_path,
+                        artifact_available=bool(wf.generated_artifact_path),
+                        created_at=wf.created_at,
+                        updated_at=wf.updated_at,
+                    )
+                    for wf in items
+                ],
+                total=total,
+                limit=limit,
+                offset=offset,
+            )
+        finally:
+            if self._external_db is None:
+                db.close()
+
 
 # Standalone function interfaces for direct imports
 _default_bridge = AgentServiceBridge()
@@ -249,3 +291,12 @@ def prepare_workflow(
 
 def get_workflow_status(workflow_id: str) -> WorkflowResponse:
     return _default_bridge.get_workflow_status(workflow_id)
+
+
+def list_workflows(
+    workflow_type: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> WorkflowListResponse:
+    return _default_bridge.list_workflows(workflow_type, status, limit, offset)

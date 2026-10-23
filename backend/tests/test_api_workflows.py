@@ -104,3 +104,71 @@ def test_utility_bill_workflow_full_lifecycle(client):
     artifact_res = client.get(f"/api/workflows/{wf_id}/artifact")
     assert artifact_res.status_code == 200
     assert artifact_res.headers["content-type"] == "application/pdf"
+
+
+def test_list_workflows_empty(client):
+    """GET /api/workflows should return empty list on a fresh DB session."""
+    res = client.get("/api/workflows")
+    assert res.status_code == 200
+    data = res.json()
+    assert "items" in data
+    assert "total" in data
+    assert "limit" in data
+    assert "offset" in data
+    assert isinstance(data["items"], list)
+
+
+def test_list_workflows_after_creation(client):
+    """GET /api/workflows should list created workflows with correct pagination metadata."""
+    pdf_bytes = create_synthetic_warranty_pdf()
+    upload_res = client.post(
+        "/api/documents",
+        files={"file": ("wf_list_test.pdf", pdf_bytes, "application/pdf")},
+        data={"document_type": "warranty"},
+    )
+    assert upload_res.status_code == 201
+    doc_id = upload_res.json()["id"]
+
+    wf_req = {
+        "workflow_type": "warranty_claim",
+        "linked_document_ids": [doc_id],
+        "initial_data": {"issue_description": "Device overheats."},
+    }
+    create_res = client.post("/api/workflows", json=wf_req)
+    assert create_res.status_code == 201
+    created_id = create_res.json()["id"]
+
+    # List without filters
+    list_res = client.get("/api/workflows?limit=10&offset=0")
+    assert list_res.status_code == 200
+    data = list_res.json()
+    assert data["total"] >= 1
+    assert data["limit"] == 10
+    assert data["offset"] == 0
+    ids = [w["id"] for w in data["items"]]
+    assert created_id in ids
+
+
+def test_list_workflows_filter_by_type(client):
+    """GET /api/workflows?workflow_type= filters correctly."""
+    res = client.get("/api/workflows?workflow_type=warranty_claim")
+    assert res.status_code == 200
+    data = res.json()
+    for item in data["items"]:
+        assert item["workflow_type"] == "warranty_claim"
+
+
+def test_list_workflows_filter_by_status(client):
+    """GET /api/workflows?status= filters correctly."""
+    res = client.get("/api/workflows?status=ready_for_review")
+    assert res.status_code == 200
+    data = res.json()
+    for item in data["items"]:
+        assert item["status"] == "ready_for_review"
+
+
+def test_workflow_not_found(client):
+    """GET /api/workflows/{id} for unknown ID returns 404."""
+    res = client.get("/api/workflows/non-existent-uuid-9999")
+    assert res.status_code == 404
+    assert res.json()["error"]["code"] == "NOT_FOUND"

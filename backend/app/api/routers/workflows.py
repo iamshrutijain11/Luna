@@ -1,6 +1,7 @@
 """Workflows API router handling lifecycle management, review, approvals, and artifact downloads."""
 
-from fastapi import APIRouter, Depends, status
+from typing import List, Optional
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import FileResponse
 
 from backend.app.api.dependencies import get_workflow_service
@@ -8,6 +9,7 @@ from backend.app.schemas.common import (
     ApprovalRequest,
     ApprovalResponse,
     WorkflowCreateRequest,
+    WorkflowListResponse,
     WorkflowResponse,
 )
 from backend.app.services.workflow_service import WorkflowService
@@ -59,6 +61,32 @@ def get_workflow(
 ) -> WorkflowResponse:
     wf = service.get_workflow(id)
     return _to_workflow_response(wf)
+
+
+@router.get(
+    "",
+    response_model=WorkflowListResponse,
+    summary="List workflows",
+)
+def list_workflows(
+    workflow_type: Optional[str] = Query(None, description="Filter by workflow type (warranty_claim, utility_bill_assistant)"),
+    status: Optional[str] = Query(None, description="Filter by status (draft, needs_information, ready_for_review, approved, completed, failed)"),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    service: WorkflowService = Depends(get_workflow_service),
+) -> WorkflowListResponse:
+    items, total = service.list_workflows(
+        workflow_type=workflow_type,
+        status=status,
+        limit=limit,
+        offset=offset,
+    )
+    return WorkflowListResponse(
+        items=[_to_workflow_response(wf) for wf in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post(

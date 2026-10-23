@@ -11,6 +11,7 @@ from backend.app.services.agent_interface import (
     analyze_bill,
     prepare_workflow,
     get_workflow_status,
+    list_workflows,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "analyze_bill",
     "prepare_workflow",
     "get_workflow_status",
+    "list_workflows",
 ]
