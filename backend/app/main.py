@@ -1,110 +1,172 @@
-"""LifeDesk FastAPI Backend Application Entry Point.
+"""
+main.py - LUNA Paperwork Assistant FastAPI Application Entrypoint.
 
-Architected for Amazon Developer Hackathon 2026 - Alexa+ Track.
+Mounts the AI Agent chat router, MCP Streamable HTTP server,
+and complete document vault + workflow management APIs for the frontend.
+
+Run:
+    $env:PYTHONPATH=".;ai-agent"
+    uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 """
 
-import logging
-from contextlib import asynccontextmanager
-from typing import AsyncGenerator
-
-from fastapi import FastAPI
+from typing import List, Optional, Dict, Any
+from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.api.error_handlers import register_error_handlers
-from backend.app.api.routers import documents_router, health_router, workflows_router
-from backend.app.config import settings
-from backend.app.core.database import init_db
+# ────────────────────────────────────────────────────────────────────────────
+# AI Agent (Person 3) — imports from luna_agent package (ai-agent/)
+# ────────────────────────────────────────────────────────────────────────────
+from luna_agent.router import agent_router
+from luna_agent.mcp.server import get_mcp_asgi_app
 
-logger = logging.getLogger("lifedesk")
-logging.basicConfig(level=logging.INFO)
+# ────────────────────────────────────────────────────────────────────────────
+# Services & Models (Person 2)
+# ────────────────────────────────────────────────────────────────────────────
+from backend.app.services.extraction import DocumentExtractionService, _DOCUMENTS_DB, _ANALYSES_DB
+from backend.app.services.workflow_service import WorkflowBackendService, _WORKFLOWS_DB
+from backend.app.models.document import DocumentMetadata, DocumentAnalysis
+from backend.app.models.workflow import WorkflowDraft
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """
-    Application lifespan manager.
-    Initializes persistent SQLite tables and storage folders.
-    Preserves MCP lifespan requirements if Person 3 provides an MCP lifecycle handler.
-    """
-    logger.info("Initializing LifeDesk persistent database schemas...")
-    init_db()
-
-    # Ensure storage paths exist
-    settings.DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
-    settings.ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Demo Authentication Limitation Warning
-    if settings.DEMO_MODE:
-        logger.warning("=" * 70)
-        logger.warning(settings.AUTH_WARNING_MESSAGE)
-        logger.warning("=" * 70)
-
-    # Check for Person 3 MCP lifespan if present
-    agent_lifespan_cm = None
-    try:
-        from backend.app.agent import mcp_lifespan  # type: ignore
-        if callable(mcp_lifespan):
-            agent_lifespan_cm = mcp_lifespan(app)
-            await agent_lifespan_cm.__aenter__()
-            logger.info("Mounted Person 3 MCP lifespan successfully.")
-    except (ImportError, AttributeError):
-        logger.info("No custom agent/MCP lifespan detected. Operating in standalone mode.")
-
-    yield
-
-    if agent_lifespan_cm:
-        try:
-            await agent_lifespan_cm.__aexit__(None, None, None)
-        except Exception as e:
-            logger.error(f"Error shutting down Person 3 MCP lifespan: {e}")
-
-    logger.info("LifeDesk shutdown complete.")
-
-
-def create_application() -> FastAPI:
-    app = FastAPI(
-        title="LifeDesk API",
-        description="AI-powered document-to-action assistant (Amazon Developer Hackathon 2026 - Alexa+ Track)",
-        version=settings.VERSION,
-        lifespan=lifespan,
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
+# Seed sample active workflow draft for demo if empty
+if not _WORKFLOWS_DB:
+    WorkflowBackendService.prepare_workflow(
+        workflow_type="warranty_claim",
+        document_ids=["doc_inv_101", "doc_war_102"],
+        parameters={
+            "product_name": "Dell XPS 15 9530 Laptop",
+            "serial_number": "SN-DELL-98721X",
+            "purchase_date": "2025-06-15",
+            "defect_description": None,
+        }
     )
 
-    # Security: CORS Middleware configured via environment settings
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# ────────────────────────────────────────────────────────────────────────────
+# FastAPI Application
+# ────────────────────────────────────────────────────────────────────────────
+app = FastAPI(
+    title="LUNA — AI-Powered Paperwork Assistant",
+    description=(
+        "Amazon Developer Hackathon 2026 — Alexa+ Track. "
+        "LUNA helps users understand warranties, compare utility bills, "
+        "and prepare document workflows through natural conversation."
+    ),
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 
-    # Register custom contract error handlers
-    register_error_handlers(app)
+# ────────────────────────────────────────────────────────────────────────────
+# CORS Configuration
+# ────────────────────────────────────────────────────────────────────────────
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "*",
+    ],
+    allow_credentials=False,  # False when using wildcard or universal access
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    # Mount Core Domain Routers
-    app.include_router(health_router, prefix=settings.API_PREFIX)
-    app.include_router(documents_router, prefix=settings.API_PREFIX)
-    app.include_router(workflows_router, prefix=settings.API_PREFIX)
+# ────────────────────────────────────────────────────────────────────────────
+# AI Agent Chat Router → POST /api/assistant/chat
+# ────────────────────────────────────────────────────────────────────────────
+app.include_router(agent_router)
 
-    # Wire Person 3's Agent Router & MCP layer conditionally
-    try:
-        from backend.app.agent.router import agent_router  # type: ignore
-        app.include_router(agent_router)
-        logger.info("Integrated Person 3 agent router at /api/assistant")
-    except Exception as e:
-        logger.info(f"Agent router not loaded: {e}")
+# ────────────────────────────────────────────────────────────────────────────
+# MCP Streamable HTTP Server → /mcp
+# ────────────────────────────────────────────────────────────────────────────
+app.mount("/mcp", get_mcp_asgi_app())
 
-    try:
-        from backend.app.agent.mcp.server import get_mcp_asgi_app  # type: ignore
-        app.mount("/mcp", get_mcp_asgi_app())
-        logger.info("Mounted Person 3 MCP ASGI application at /mcp")
-    except Exception as e:
-        logger.info(f"MCP ASGI app not loaded: {e}")
-
-    return app
+# ────────────────────────────────────────────────────────────────────────────
+# Health Probe
+# ────────────────────────────────────────────────────────────────────────────
+@app.get("/health", tags=["system"])
+async def health_check():
+    """Quick liveness probe — returns OK if the server is running."""
+    return {"status": "ok", "service": "LUNA-paperwork-assistant", "version": "1.0.0"}
 
 
-app = create_application()
+# ────────────────────────────────────────────────────────────────────────────
+# Document Vault API Endpoints (called by frontend /api/documents)
+# ────────────────────────────────────────────────────────────────────────────
+@app.get(
+    "/api/documents",
+    response_model=List[DocumentMetadata],
+    tags=["documents"],
+    summary="List all documents in vault"
+)
+async def list_documents(document_type: Optional[str] = Query(None, description="Filter by document type")):
+    return DocumentExtractionService.list_documents(document_type=document_type)
+
+
+@app.get(
+    "/api/documents/{document_id}",
+    response_model=DocumentMetadata,
+    tags=["documents"],
+    summary="Get document metadata"
+)
+async def get_document(document_id: str):
+    doc = DocumentExtractionService.get_document_details(document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"Document {document_id} not found")
+    return doc
+
+
+@app.get(
+    "/api/documents/{document_id}/analysis",
+    response_model=DocumentAnalysis,
+    tags=["documents"],
+    summary="Get structured extraction and intelligence"
+)
+async def get_document_analysis(document_id: str):
+    analysis = DocumentExtractionService.get_document_analysis(document_id)
+    if not analysis:
+        raise HTTPException(status_code=404, detail=f"Analysis for document {document_id} not found")
+    return analysis
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Workflow Management API Endpoints (called by frontend /api/workflows)
+# ────────────────────────────────────────────────────────────────────────────
+@app.get(
+    "/api/workflows",
+    response_model=List[WorkflowDraft],
+    tags=["workflows"],
+    summary="List all active workflows and drafts"
+)
+async def list_workflows():
+    return list(_WORKFLOWS_DB.values())
+
+
+@app.get(
+    "/api/workflows/{workflow_id}",
+    response_model=WorkflowDraft,
+    tags=["workflows"],
+    summary="Get workflow draft status"
+)
+async def get_workflow(workflow_id: str):
+    wf = WorkflowBackendService.get_workflow_status(workflow_id)
+    if not wf:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+    return wf
+
+
+@app.post(
+    "/api/workflows/{workflow_id}/approve",
+    response_model=WorkflowDraft,
+    tags=["workflows"],
+    summary="User explicit authorization to approve and submit a workflow"
+)
+async def approve_workflow(workflow_id: str):
+    wf = WorkflowBackendService.get_workflow_status(workflow_id)
+    if not wf:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+    wf.is_approved = True
+    wf.is_submitted = True
+    wf.status = "COMPLETED"
+    return wf

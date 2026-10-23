@@ -1,0 +1,210 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-ivory: #F4F0E8;
+    --color-pearl: #FFFFFF;
+    --color-pearl-grey: #E7E3DC;
+    --color-moonstone: #B9B8BE;
+    --color-silver: #92939D;
+    --color-lavender: #B5ADC9;
+    --color-halo: #DCD9FF;
+    --color-charcoal: #17171D;
+    --color-primary: #20212A;
+    --color-secondary: #626471;
+  }
+
+  body {
+    @apply bg-luna-ivory text-luna-primary font-sans antialiased selection:bg-luna-halo selection:text-luna-charcoal min-h-screen;
+    background-color: #F4F0E8;
+  }
+
+  /* Accessible focus rings */
+  :focus-visible {
+    @apply outline-none ring-2 ring-luna-accent ring-offset-2 ring-offset-luna-pearl;
+  }
+}
+
+/* ==========================================================================
+   LUNA Architectural Moonlit Background Pattern Canvas
+   Oversized visible diagonal geometry & pearl-white facets across Moonlight Ivory
+   ========================================================================== */
+.luna-architectural-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: #F4F0E8;
+  background-image:
+    /* Layer 1: Ambient Lunar Radiance (Upper right moon glow & lower left dusk glow) */
+    radial-gradient(ellipse 950px 700px at 85% 0%, rgba(220, 217, 255, 0.35) 0%, transparent 65%),
+    radial-gradient(ellipse 900px 700px at 10% 90%, rgba(181, 173, 201, 0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 500px at 50% 25%, rgba(255, 255, 255, 0.65) 0%, transparent 55%),
+
+    /* Layer 2: Oversized Diagonal Architectural Facets & Ribbons (45deg broad geometric planes) */
+    linear-gradient(45deg,
+      #F4F0E8 0%,
+      rgba(234, 227, 215, 0.88) 12%,
+      rgba(255, 255, 255, 0.92) 22%,
+      rgba(255, 255, 255, 0.68) 34%,
+      rgba(230, 222, 209, 0.82) 42%,
+      #F4F0E8 52%,
+      rgba(255, 255, 255, 0.88) 64%,
+      rgba(255, 255, 255, 0.62) 76%,
+      rgba(232, 225, 212, 0.85) 86%,
+      #F4F0E8 100%
+    ),
+
+    /* Layer 3: Counter-Angle Translucent Glass Facets (135deg intersecting planes) */
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.50) 0%,
+      transparent 32%,
+      rgba(220, 217, 255, 0.12) 48%,
+      rgba(255, 255, 255, 0.38) 64%,
+      transparent 88%
+    ),
+
+    /* Layer 4: Architectural Geometric Precision Lines (Subtle visible 45deg drafting lines) */
+    repeating-linear-gradient(45deg, 
+      rgba(146, 147, 157, 0.08) 0px, 
+      rgba(146, 147, 157, 0.08) 1.5px, 
+      transparent 1.5px, 
+      transparent 72px
+    );
+  background-attachment: fixed;
+}
+
+/* ==========================================================================
+   LUNA Dark Charcoal Glassmorphic Sidebar (Architectural Cut-Glass Monolith)
+   Prominent diagonal bands, graphite facets, and specular architectural beams
+   ========================================================================== */
+.luna-glass-sidebar {
+  position: fixed;
+  z-index: 50;
+  width: 16rem;
+  background-color: #14141A;
+  background-image:
+    /* Layer 1: Sharp Diagonal Specular Light Beams (135deg architectural light rays) */
+    linear-gradient(135deg, 
+      transparent 0%, 
+      transparent 16%, 
+      rgba(255, 255, 255, 0.16) 19%, 
+      rgba(220, 217, 255, 0.28) 20%, 
+      rgba(255, 255, 255, 0.14) 21.5%, 
+      transparent 25%,
+      transparent 45%, 
+      rgba(255, 255, 255, 0.12) 49%, 
+      rgba(220, 217, 255, 0.22) 50%, 
+      rgba(255, 255, 255, 0.10) 51.5%, 
+      transparent 56%,
+      transparent 74%,
+      rgba(255, 255, 255, 0.15) 78%,
+      rgba(220, 217, 255, 0.25) 79%,
+      rgba(255, 255, 255, 0.12) 80.5%,
+      transparent 85%
+    ),
+    /* Layer 2: Broad Alternating Diagonal Architectural Bands (Graphite & Dark Charcoal) */
+    linear-gradient(135deg,
+      rgba(26, 26, 34, 0.98) 0%,
+      rgba(38, 38, 50, 0.94) 18%,
+      rgba(22, 22, 28, 0.96) 21%,
+      rgba(16, 16, 22, 0.98) 40%,
+      rgba(42, 42, 56, 0.92) 49%,
+      rgba(24, 24, 32, 0.96) 53%,
+      rgba(15, 15, 20, 0.98) 70%,
+      rgba(46, 46, 62, 0.92) 78%,
+      rgba(20, 20, 26, 0.97) 82%,
+      rgba(14, 14, 18, 0.99) 100%
+    ),
+    /* Layer 3: Soft vertical ambient lighting wash */
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 40%, rgba(0, 0, 0, 0.45) 100%);
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 
+    0 20px 40px -10px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 1px 0 rgba(255, 255, 255, 0.1),
+    inset 1px 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Desktop floating positioning & rounded monolith frame */
+@media (min-width: 1024px) {
+  .luna-glass-sidebar {
+    top: 0.75rem;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    border-radius: 1.5rem;
+  }
+}
+
+/* Mobile full-height edge-to-edge frame */
+@media (max-width: 1023px) {
+  .luna-glass-sidebar {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: 0;
+    border-left: none;
+    border-top: none;
+    border-bottom: none;
+  }
+}
+
+/* Solid fallback for browsers without backdrop-filter support */
+@supports not (backdrop-filter: blur(1px)) {
+  .luna-glass-sidebar {
+    background-color: #17171D !important;
+  }
+}
+
+/* ==========================================================================
+   LUNA Frosted Glass Cards & Floating Surfaces
+   ========================================================================== */
+.luna-glass-card {
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 1rem; /* 16px */
+  box-shadow: 0 4px 20px -2px rgba(23, 23, 29, 0.04), 0 1px 3px -1px rgba(23, 23, 29, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.luna-glass-card:hover {
+  border-color: rgba(255, 255, 255, 1);
+  box-shadow: 0 10px 30px -4px rgba(23, 23, 29, 0.07), 0 2px 6px -1px rgba(23, 23, 29, 0.03);
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Restrained smooth scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #B9B8BE;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #92939D;
+}
