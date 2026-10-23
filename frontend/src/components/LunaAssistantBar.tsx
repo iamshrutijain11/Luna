@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic, Sparkles, Send } from 'lucide-react';
+import { Mic, Send } from 'lucide-react';
 
 interface LunaAssistantBarProps {
   onPromptSelect?: (prompt: string) => void;
@@ -107,9 +107,6 @@ export const LunaAssistantBar: React.FC<LunaAssistantBarProps> = ({ onPromptSele
 
           {/* Quick Prompt Pills */}
           <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-            <span className="text-[10px] text-luna-silver/70 flex items-center gap-1 mr-0.5">
-              <Sparkles className="w-3 h-3 text-luna-halo" /> Suggestions:
-            </span>
             {suggestedPrompts.slice(0, 3).map((prompt, idx) => (
               <button
                 key={idx}
