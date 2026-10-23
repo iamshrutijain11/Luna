@@ -103,3 +103,14 @@ def root_health() -> HealthResponse:
 # ────────────────────────────────────────────────────────────────────────────
 app.include_router(documents_router, prefix="/api")
 app.include_router(workflows_router, prefix="/api")
+
+# ────────────────────────────────────────────────────────────────────────────
+# Production Frontend SPA Static Asset Serving
+# ────────────────────────────────────────────────────────────────────────────
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
+dist_path = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+if dist_path.exists():
+    app.mount("/", StaticFiles(directory=str(dist_path), html=True), name="frontend")
+

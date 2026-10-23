@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  luna:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: luna-app
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_PROVIDER=gemini
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - DATABASE_URL=sqlite:////app/storage/lifedesk.db
+      - DEMO_MODE=true
+    volumes:
+      - luna-storage:/app/storage
+    restart: unless-stopped
+
+volumes:
+  luna-storage:
